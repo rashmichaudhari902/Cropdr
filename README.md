@@ -4,6 +4,8 @@
 
 CropDr. is a free, AI-powered web platform that helps Indian farmers detect crop diseases instantly — just upload a photo and get a complete diagnosis + treatment plan in under 30 seconds.
 
+https://cropdr.onrender.com
+
 ---
 
 ## 🚨 Problem
