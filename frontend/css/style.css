@@ -712,3 +712,103 @@ a { text-decoration: none; color: inherit; }
   background: var(--danger);
   animation: mic-pulse 1s ease-in-out infinite;
 }
+
+/* ─── RESPONSIVE DESIGN ─── */
+
+/* Tablets & Small Laptops (max-width: 1024px) */
+@media (max-width: 1024px) {
+  /* Landing Page */
+  .hero-content { grid-template-columns: 1fr; text-align: center; gap: 40px; }
+  .hero-subtitle { margin: 0 auto 36px; }
+  .hero-actions { justify-content: center; }
+  .hero-stats { justify-content: center; }
+  .feature-card-float:nth-child(even) { margin-left: 0; }
+  .about-grid { grid-template-columns: 1fr; gap: 40px; }
+  .features-grid, .team-grid { grid-template-columns: repeat(2, 1fr); }
+  .steps-grid { grid-template-columns: repeat(2, 1fr); gap: 40px; }
+  .step-card:not(:last-child)::after { display: none; }
+  .footer-top { grid-template-columns: repeat(2, 1fr); }
+
+  /* Auth Page */
+  .auth-visual { padding: 40px; }
+  .auth-form-side { padding: 40px 24px; }
+
+  /* Dashboard */
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .dash-grid-2 { grid-template-columns: 1fr; }
+  .sidebar { width: 200px; }
+}
+
+/* Mobile Phones (max-width: 768px) */
+@media (max-width: 768px) {
+  /* Global Layout */
+  .section { padding: 60px 20px; }
+  .hero { padding: 60px 20px; }
+  .navbar { padding: 0 16px; height: 60px; }
+  .nav-links { display: none; } /* Hide secondary links on mobile */
+  .nav-user-name { display: none; } /* Hide name, show only avatar */
+
+  /* Landing Page */
+  .features-grid, .team-grid { grid-template-columns: 1fr; }
+  .steps-grid { grid-template-columns: 1fr; gap: 40px; }
+  .footer-top { grid-template-columns: 1fr; gap: 30px; }
+  .footer-bottom { flex-direction: column; gap: 10px; text-align: center; }
+  .about-visual { min-height: 320px; padding: 30px 24px; }
+  .about-visual-big { font-size: 3rem; }
+
+  /* Auth Page */
+  .auth-wrapper { grid-template-columns: 1fr; }
+  .auth-visual { display: none; } /* Hide visual on very small screens to focus on form */
+  .auth-form-side { padding: 40px 20px; }
+
+  /* Dashboard Layout */
+  .dashboard-layout { flex-direction: column; min-height: auto; }
+  
+  /* Horizontal Scrollable Sidebar for Mobile */
+  .sidebar {
+    width: 100%; height: auto; position: sticky; top: 60px; z-index: 90;
+    flex-direction: row; overflow-x: auto; overflow-y: hidden;
+    padding: 12px 16px; border-right: none; border-bottom: 1px solid var(--border);
+    white-space: nowrap; gap: 8px; align-items: center;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Hide section labels in horizontal sidebar */
+  .sidebar-section-label { display: none; }
+  .sidebar-item { padding: 8px 12px; font-size: .85rem; border-radius: 20px; background: var(--cream); }
+  .sidebar-item.active { background: var(--green-pale); }
+  .sidebar-item-icon { margin-right: 4px; }
+  
+  /* Dashboard Content */
+  .dashboard-main { padding: 20px; }
+  .stats-row { grid-template-columns: 1fr; gap: 12px; }
+  .dash-header { flex-direction: column; gap: 16px; align-items: flex-start; }
+  .dash-title { font-size: 1.4rem; }
+  
+  /* Make tables scrollable horizontally without breaking layout */
+  .dash-card { overflow-x: auto; padding: 16px; }
+  .history-table { min-width: 600px; } /* Force table width so it scrolls instead of squishing */
+  
+  /* Profile Grid */
+  .profile-grid { grid-template-columns: 1fr; gap: 20px; }
+
+  /* Modals */
+  .diagnosis-modal-content { width: 95%; padding: 20px; margin: 20px; }
+  .diagnosis-split { grid-template-columns: 1fr; gap: 20px; }
+  .diagnosis-modal-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .diagnosis-modal-close { position: absolute; right: 20px; top: 20px; }
+  .diagnosis-modal-footer { flex-direction: column; gap: 10px; }
+  .diagnosis-modal-btn { width: 100%; justify-content: center; }
+
+  /* Chat Adjustments */
+  #dtab-chatbot .dash-grid-2 { display: flex; flex-direction: column; }
+  #dtab-chatbot .dash-card { height: 500px; }
+}
+
+/* Extra Small Phones (max-width: 480px) */
+@media (max-width: 480px) {
+  .hero-title { font-size: 2.2rem; }
+  .hero-actions { flex-direction: column; width: 100%; }
+  .btn-hero-primary, .btn-hero-secondary { width: 100%; text-align: center; }
+  .cta-banner { padding: 60px 20px; }
+  .cta-banner-title { font-size: 1.8rem; }
+}
