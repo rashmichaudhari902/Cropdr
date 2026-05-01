@@ -107,12 +107,21 @@
       <!-- Active Alerts Banner -->
       <div id="overview-alerts-container"></div>
 
-      <!-- Recent History -->
+      <!-- Recent History (All Users) -->
       <div class="dash-card">
-        <div class="dash-card-title"><span data-i18n="recent_scans">📜 Recent Scans</span> <span class="dash-card-action" onclick="dashTab('history')">View All →</span></div>
-        <table class="history-table">
+        <div class="dash-card-title"><span data-i18n="recent_scans">📜 Recent Scans (All Users)</span> <span class="dash-card-action" onclick="dashTab('history')">View All →</span></div>
+        <table class="history-table" id="overview-all-scans-table">
           <tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>Status</th></tr>
           <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">Loading scans...</td></tr>
+        </table>
+      </div>
+
+      <!-- My Scans (Current User) -->
+      <div class="dash-card">
+        <div class="dash-card-title"><span>🔍 My Recent Scans</span> <span class="dash-card-action" onclick="dashTab('history')">View All →</span></div>
+        <table class="history-table" id="overview-my-scans-table">
+          <tr><th>Date</th><th>Crop</th><th>Disease</th><th>Result</th><th>Action</th></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">Loading your scans...</td></tr>
         </table>
       </div>
     </div>
@@ -274,6 +283,8 @@
     <!-- ── PROFILE TAB ── -->
     <div id="dtab-profile" style="display:none;">
       <div class="dash-header"><div><div class="dash-greeting">Account</div><div class="dash-title">Your Profile</div></div></div>
+      
+      <!-- Profile Info Section -->
       <div class="profile-grid">
         <div>
           <div class="profile-card">
@@ -288,16 +299,66 @@
           </div>
         </div>
         <div class="profile-details">
-          <div style="font-weight:700;font-size:1rem;margin-bottom:20px;">📋 Farmer Details</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div style="font-weight:700;font-size:1rem;">📋 Farmer Details</div>
+            <button class="btn-edit-profile" onclick="openEditProfileModal()">✏️ Edit Profile</button>
+          </div>
           <div class="profile-field"><div class="profile-field-label">Full Name</div><div class="profile-field-value" id="pf-name">—</div></div>
           <div class="profile-field"><div class="profile-field-label">Email Address</div><div class="profile-field-value" id="pf-email">—</div></div>
-          <div class="profile-field"><div class="profile-field-label">Location</div><div class="profile-field-value">Maharashtra, India</div></div>
-          <div class="profile-field"><div class="profile-field-label">Preferred Language</div><div class="profile-field-value">English / हिंदी</div></div>
+          <div class="profile-field"><div class="profile-field-label">Location</div><div class="profile-field-value" id="pf-location">Maharashtra, India</div></div>
+          <div class="profile-field"><div class="profile-field-label">Primary Crops</div><div class="profile-field-value" id="pf-crops">Wheat, Cotton, Soybeans</div></div>
+          <div class="profile-field"><div class="profile-field-label">Preferred Language</div><div class="profile-field-value" id="pf-lang">English / हिंदी</div></div>
+        </div>
+      </div>
+
+      <!-- User's Scans Section -->
+      <div class="dash-card" style="margin-top:28px;">
+        <div class="dash-card-title">📊 Your Scan History</div>
+        <div id="profile-scans-container">
+          <div style="text-align:center;color:var(--muted);padding:20px;font-size:.9rem;">Loading your scans...</div>
         </div>
       </div>
     </div>
 
   </main>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div id="edit-profile-modal" class="diagnosis-modal" onclick="closeEditProfileModal(event)">
+  <div class="diagnosis-modal-content" onclick="event.stopPropagation()">
+    <div class="diagnosis-modal-header">
+      <div class="diagnosis-modal-title">👤 Edit Your Profile</div>
+      <button class="diagnosis-modal-close" onclick="closeEditProfileModal()">✕</button>
+    </div>
+    <form id="edit-profile-form" onsubmit="handleEditProfileSubmit(event)">
+      <div class="diagnosis-modal-body">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="edit-pf-name" class="form-input" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input type="text" id="edit-pf-location" class="form-input" placeholder="e.g. Maharashtra, India" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Primary Crops</label>
+          <input type="text" id="edit-pf-crops" class="form-input" placeholder="e.g. Wheat, Cotton, Rice" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preferred Language</label>
+          <select id="edit-pf-lang" class="form-input">
+            <option value="English">English</option>
+            <option value="Hindi">हिंदी (Hindi)</option>
+            <option value="Marathi">मराठी (Marathi)</option>
+          </select>
+        </div>
+      </div>
+      <div class="diagnosis-modal-footer">
+        <button type="button" class="diagnosis-modal-btn cancel" onclick="closeEditProfileModal()">Cancel</button>
+        <button type="submit" class="diagnosis-modal-btn download">💾 Save Changes</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- DIAGNOSIS MODAL POPUP -->

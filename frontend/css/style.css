@@ -419,8 +419,16 @@ a { text-decoration: none; color: inherit; }
 .profile-field:last-child { margin-bottom: 0; }
 .profile-field-label { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
 .profile-field-value { font-size: 1rem; font-weight: 500; padding: 10px 14px; background: var(--cream); border-radius: 8px; border: 1px solid var(--border); }
-.btn-edit-profile { margin-top: 20px; padding: 10px 22px; border-radius: 10px; background: var(--green-pale); color: var(--green-dark); font-weight: 700; font-size: .9rem; transition: all .2s; }
-.btn-edit-profile:hover { background: var(--green-light); }
+.btn-edit-profile {
+  padding: 8px 16px; border-radius: 8px;
+  background: var(--green-pale); color: var(--green-dark);
+  font-weight: 700; font-size: .82rem; transition: all .2s;
+  border: 1px solid var(--green-light);
+}
+.btn-edit-profile:hover {
+  background: var(--green-base); color: #fff;
+  transform: translateY(-1px); box-shadow: 0 4px 12px rgba(64,145,108,.2);
+}
 
 /* Notification toast */
 .toast {
