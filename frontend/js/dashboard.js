@@ -92,12 +92,17 @@ function downloadDiagnosisPDF() {
   clone.style.padding = '30px';
   clone.style.background = '#fff';
   clone.style.color = '#000';
+  // Critical for mobile: prevent scrolling or hidden overflow from clipping the canvas
+  clone.style.overflow = 'visible';
+  clone.style.height = 'auto';
+  clone.style.maxHeight = 'none';
   
   const opt = {
     margin:       10,
     filename:     'CropDr_AI_Diagnostic_Report.pdf',
     image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2 },
+    // Force a desktop-like render width so the mobile responsive layout doesn't break the PDF
+    html2canvas:  { scale: 2, useCORS: true, windowWidth: 800, width: 800 },
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
