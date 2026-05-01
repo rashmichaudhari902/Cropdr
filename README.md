@@ -59,7 +59,7 @@ CropDr. gives every farmer the power of an agricultural expert — in their pock
 
 ### Prerequisites
 - Python 3.8+
-- pip
+- npm
 
 ### Installation
 
@@ -69,13 +69,15 @@ git clone https://github.com/YOUR_USERNAME/cropdr.git
 cd cropdr
 
 # Install dependencies
-pip install -r requirements.txt
+npm run install:backend
 
 # Add your API keys in .env
-cp .env.example .env
+cp .env
+[locally run the project if you jus change the api keys in the .env file]
+[also do change your API and add during deployment into env variables.]
 
 # Run the app
-python app.py
+npm start
 ```
 
 App will run at `http://localhost:5000`
