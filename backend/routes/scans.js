@@ -38,7 +38,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // GET /api/scans/:id
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const scan = await stmts.getScanById(req.params.id, req.user.userId);
+    const scan = await stmts.getScanById(req.params.id);
     if (!scan) return res.status(404).json({ error: 'Scan not found.' });
     res.json({ ...scan, result: scan.result_json ? JSON.parse(scan.result_json) : null });
   } catch (err) {
