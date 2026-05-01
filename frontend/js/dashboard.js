@@ -3,6 +3,106 @@ let detectFiles = [];
 let quickFiles  = [];
 let chatHistory = [];
 let currentChatSessionId = null;
+let cachedScans = [];  // cached scans for filtering
+let viewingPastScan = false;  // true when viewing a past scan detail
+let currentDiagnosisData = null;  // store diagnosis data for PDF download
+
+/* ─── Diagnosis Modal Functions ─── */
+function showDiagnosisModal(diagnosis, scanDate) {
+  currentDiagnosisData = diagnosis;
+  const modal = document.getElementById('diagnosis-modal');
+  const bodyEl = document.getElementById('diagnosis-modal-body');
+  
+  if (!modal || !bodyEl) return;
+  
+  // Render diagnosis summary in modal
+  const sev = { Early: 'badge-green', Moderate: 'badge-amber', Severe: 'badge-danger', None: 'badge-green' };
+  const spread = { Low: 'badge-green', Moderate: 'badge-amber', High: 'badge-danger' };
+  const isHealthy = diagnosis.diseaseDetected === 'Healthy';
+  
+  const summary = `
+  <div class="result-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;">Crop Identified</div>
+        <div style="font-size:1.1rem;font-weight:800;">${diagnosis.cropType || 'Unknown'}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:.75rem;color:var(--muted);">Confidence</div>
+        <div style="font-size:1.5rem;font-weight:900;color:var(--green-base);">${diagnosis.confidenceScore || 0}%</div>
+      </div>
+    </div>
+    <div class="${isHealthy ? 'result-disease result-healthy' : 'result-disease'}">${isHealthy ? '✅' : '⚠️'} ${diagnosis.diseaseDetected}</div>
+    <div class="result-badges">
+      <span class="badge ${sev[diagnosis.severityLevel] || 'badge-amber'}">🎯 ${diagnosis.severityLevel}</span>
+      <span class="badge ${spread[diagnosis.spreadRisk] || 'badge-amber'}">📡 Spread: ${diagnosis.spreadRisk}</span>
+      <span class="badge badge-sky">💪 Recovery: ${diagnosis.recoveryChance}%</span>
+    </div>
+    ${diagnosis.severityPercent > 0 ? `
+    <div style="margin-bottom:12px;">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:4px;">Affected Area: ${diagnosis.severityPercent}%</div>
+      <div style="background:#e0e0e0;border-radius:10px;height:7px;overflow:hidden;">
+        <div style="height:100%;width:${diagnosis.severityPercent}%;background:${diagnosis.severityLevel==='Severe'?'#c0392b':diagnosis.severityLevel==='Moderate'?'#e9a319':'#40916c'};border-radius:10px;"></div>
+      </div>
+    </div>` : ''}
+    <div class="result-summary">${diagnosis.summary}</div>
+    ${diagnosis.immediateAction ? `<div style="font-weight:800;color:var(--danger);font-size:.85rem;margin-bottom:12px;padding:8px 12px;background:var(--danger-light);border-radius:8px;">🚨 Now: ${diagnosis.immediateAction}</div>` : ''}
+    ${diagnosis.treatmentPlan?.length ? `
+    <div style="font-weight:700;font-size:.9rem;margin-bottom:8px;">🗓️ Treatment Plan</div>
+    ${diagnosis.treatmentPlan.map(s => `<div class="treatment-step"><span class="step-day-badge">${s.day}</span><span class="step-action">${s.action}</span></div>`).join('')}
+    ` : ''}
+    ${diagnosis.organicTreatments?.length ? `<div style="margin-top:12px;padding:10px;background:var(--green-pale);border-radius:8px;"><div style="font-weight:700;font-size:.82rem;color:var(--green-dark);margin-bottom:5px;">🌿 Organic</div>${diagnosis.organicTreatments.map(t=>`<div style="font-size:.82rem;">• ${t}</div>`).join('')}</div>` : ''}
+    ${diagnosis.chemicalTreatments?.length ? `<div style="margin-top:8px;padding:10px;background:var(--sky-light);border-radius:8px;"><div style="font-weight:700;font-size:.82rem;color:var(--sky);margin-bottom:5px;">🧪 Chemical</div>${diagnosis.chemicalTreatments.map(t=>`<div style="font-size:.82rem;">• ${t}</div>`).join('')}</div>` : ''}
+    ${diagnosis.availablePesticides?.length ? `<div style="margin-top:8px;"><div style="font-weight:700;font-size:.82rem;margin-bottom:5px;">🏪 Available in India</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${diagnosis.availablePesticides.map(p=>`<span style="background:var(--sky);color:#fff;border-radius:20px;padding:2px 9px;font-size:.75rem;">${p}</span>`).join('')}</div></div>` : ''}
+    ${diagnosis.prevention?.length ? `<div style="margin-top:8px;padding:10px;background:var(--cream);border-radius:8px;border:1px solid var(--border);"><div style="font-weight:700;font-size:.82rem;margin-bottom:5px;">🛡️ Prevention</div>${diagnosis.prevention.map(p=>`<div style="font-size:.82rem;">✓ ${p}</div>`).join('')}</div>` : ''}
+    <div style="margin-top:12px;padding:10px;background:var(--cream);border-radius:8px;font-size:.82rem;color:var(--muted);text-align:center;">
+      Scanned on ${scanDate}
+    </div>
+  </div>
+  `;
+  
+  bodyEl.innerHTML = summary;
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDiagnosisModal(event) {
+  // Allow closing by clicking overlay or close button
+  if (event && event.target.id !== 'diagnosis-modal') return;
+  
+  const modal = document.getElementById('diagnosis-modal');
+  if (modal) {
+    modal.classList.remove('show');
+    document.body.style.overflow = 'auto';
+  }
+  currentDiagnosisData = null;
+}
+
+function downloadDiagnosisPDF() {
+  if (typeof html2pdf === 'undefined') {
+    showToast('❌ PDF library is loading, try again in a moment.');
+    return;
+  }
+  if (!currentDiagnosisData) return;
+  
+  const element = document.getElementById('diagnosis-modal-body');
+  if (!element) return;
+  
+  const clone = element.cloneNode(true);
+  clone.style.padding = '30px';
+  clone.style.background = '#fff';
+  clone.style.color = '#000';
+  
+  const opt = {
+    margin:       10,
+    filename:     'CropDr_AI_Diagnostic_Report.pdf',
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2 },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+  
+  html2pdf().set(opt).from(clone).save();
+}
 
 /* ─── Dashboard Init ─── */
 window.initDashboard = function() {
@@ -138,6 +238,102 @@ async function runDetectAnalysis() {
   
   resultEl.innerHTML = renderResultHTML(res);
   loadScansHistory();
+}
+
+/* ─── View Past Scan Detail ─── */
+async function viewScanDetail(scanId) {
+  try {
+    const res = await fetch(`${API}/scans/${scanId}`, { headers: authHeaders() });
+    const scan = await res.json();
+    if (!res.ok) throw new Error(scan.error || 'Failed to load scan');
+
+    const result = scan.result_json ? JSON.parse(scan.result_json) : scan.result || null;
+    const scanDate = new Date(scan.created_at || scan.createdAt).toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+    // Prepare diagnosis data
+    let diagnosis;
+    if (result) {
+      diagnosis = result;
+    } else {
+      // Fallback: create diagnosis object from scan data
+      diagnosis = {
+        cropType: scan.crop_type || 'Unknown',
+        diseaseDetected: scan.disease_detected || 'Unknown',
+        confidenceScore: scan.confidence_score || 0,
+        severityLevel: scan.severity_level || 'N/A',
+        spreadRisk: scan.spread_risk || 'N/A',
+        recoveryChance: scan.recovery_chance || 0,
+        summary: 'Scan completed. Review the details above.',
+        treatmentPlan: [],
+        organicTreatments: [],
+        chemicalTreatments: [],
+        availablePesticides: [],
+        prevention: []
+      };
+    }
+
+    // Show modal with diagnosis
+    showDiagnosisModal(diagnosis, scanDate);
+  } catch (err) {
+    console.error('Failed to load scan detail:', err);
+    showToast('⚠️ Failed to load scan details. ' + err.message);
+  }
+}
+
+function goBackToHistory() {
+  resetDetectView();
+  dashTab('history');
+}
+
+function resetDetectView() {
+  viewingPastScan = false;
+  const uploadCard = document.getElementById('detect-upload-card');
+  if (uploadCard) uploadCard.style.display = '';
+
+  const navArea = document.getElementById('scan-detail-nav-area');
+  if (navArea) { navArea.style.display = 'none'; navArea.innerHTML = ''; }
+
+  const resultEl = document.getElementById('det-result');
+  if (resultEl) {
+    resultEl.innerHTML = `
+      <div style="font-size:2.5rem;margin-bottom:12px;">🌱</div>
+      <span data-i18n="upload_to_see">Upload images and click Analyze to see results here.</span>`;
+  }
+}
+
+/* ─── Delete Scan ─── */
+async function deleteScan(scanId) {
+  if (!confirm('Are you sure you want to delete this scan? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`${API}/scans/${scanId}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    if (res.ok) {
+      showToast('🗑️ Scan deleted successfully');
+      loadScansHistory();
+    } else {
+      showToast('❌ Failed to delete scan');
+    }
+  } catch (err) {
+    console.error('Failed to delete scan:', err);
+    showToast('❌ Network error while deleting scan');
+  }
+}
+
+/* ─── Filter History Table ─── */
+function filterHistoryTable() {
+  const searchEl = document.getElementById('history-search-input');
+  const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  if (!cachedScans.length) return;
+
+  const filtered = query
+    ? cachedScans.filter(s =>
+        (s.cropType || '').toLowerCase().includes(query) ||
+        (s.diseaseDetected || '').toLowerCase().includes(query))
+    : cachedScans;
+
+  renderHistoryRows(filtered);
 }
 
 /* ─── AI API Call → Backend ─── */
@@ -463,6 +659,45 @@ async function loadWeatherWidget() {
   } catch (err) { console.error('Failed to load weather widget', err); }
 }
 
+/* ─── Render History Rows (used by both load and filter) ─── */
+function renderHistoryRows(scans) {
+  const container = document.getElementById('history-table-container');
+  if (!container) return;
+
+  if (!scans || !scans.length) {
+    container.innerHTML = `
+      <div class="history-empty fade-in">
+        <div class="history-empty-icon">🔍</div>
+        <div class="history-empty-title">No scans found</div>
+        <div class="history-empty-desc">Try a different search or run your first disease detection.</div>
+        <button class="history-empty-btn" onclick="dashTab('detect'); resetDetectView()">🔬 Start New Scan</button>
+      </div>`;
+    return;
+  }
+
+  const headerRow = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Confidence</th><th>Severity</th><th>Treatment</th><th>Actions</th></tr>';
+  const rows = scans.map(s => {
+    const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric', year:'numeric' });
+    const sevClass = { Early:'badge-green', Moderate:'badge-amber', Severe:'badge-danger', None:'badge-green' }[s.severityLevel] || 'badge-amber';
+    return `<tr class="fade-in">
+      <td>${date}</td>
+      <td>${s.cropType}</td>
+      <td>${s.diseaseDetected}</td>
+      <td>${s.confidenceScore}%</td>
+      <td><span class="badge ${sevClass}">${s.severityLevel}</span></td>
+      <td>${s.result?.chemicalTreatments?.[0] || '—'}</td>
+      <td>
+        <div class="history-actions">
+          <button class="history-btn history-btn-view" onclick="viewScanDetail(${s.id})" title="View full analysis">👁️ View</button>
+          <button class="history-btn history-btn-delete" onclick="deleteScan(${s.id})" title="Delete scan">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<table class="history-table" id="history-main-table" style="width:100%;">${headerRow}${rows}</table>`;
+}
+
 /* ─── Scan History (from DB) ─── */
 async function loadScansHistory() {
   try {
@@ -471,44 +706,71 @@ async function loadScansHistory() {
     if (!res.ok) return;
 
     const { scans, stats } = data;
+    cachedScans = scans; // cache for filtering
 
-    // Update stats cards
+    // Update stats cards on overview
     const statEls = document.querySelectorAll('.stat-value');
     if (statEls[1]) statEls[1].textContent = stats.totalScans;
 
-    // Build history table rows
-    const tbody = document.querySelector('#dtab-history .history-table tbody') ||
-                  document.querySelector('#dtab-history .history-table');
-    if (!tbody || !scans.length) return;
+    // Update stat pills in history tab
+    const pillsEl = document.getElementById('history-stat-pills');
+    if (pillsEl) {
+      pillsEl.innerHTML = `
+        <div class="history-stat-pill"><span class="pill-count">${stats.totalScans || 0}</span> Total</div>
+        <div class="history-stat-pill green">✅ <span class="pill-count">${stats.healthyCount || 0}</span> Healthy</div>
+        <div class="history-stat-pill danger">⚠️ <span class="pill-count">${stats.diseaseCount || 0}</span> Diseased</div>`;
+    }
 
-    const rows = scans.map(s => {
-      const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric', year:'numeric' });
-      const sevClass = { Early:'badge-green', Moderate:'badge-amber', Severe:'badge-danger', None:'badge-green' }[s.severityLevel] || 'badge-amber';
-      const status = s.diseaseDetected === 'Healthy' ? '<span class="status-pill status-resolved">Healthy</span>' : '<span class="status-pill status-recovering">Logged</span>';
-      return `<tr>
-        <td>${date}</td>
-        <td>${s.cropType}</td>
-        <td>${s.diseaseDetected}</td>
-        <td>${s.confidenceScore}%</td>
-        <td><span class="badge ${sevClass}">${s.severityLevel}</span></td>
-        <td>${s.result?.chemicalTreatments?.[0] || '—'}</td>
-        <td>${status}</td>
-      </tr>`;
-    }).join('');
+    // Update crop health score
+    const total = stats.totalScans || 0;
+    const healthy = stats.healthyCount || 0;
+    if (total > 0) {
+      const score = Math.round((healthy / total) * 100);
+      const scoreEl = document.getElementById('health-score-val');
+      const labelEl = document.getElementById('health-score-label');
+      const descEl = document.getElementById('health-score-desc');
+      if (scoreEl) scoreEl.textContent = score;
+      if (labelEl) labelEl.textContent = `out of 100 · ${score >= 70 ? 'Good Health' : score >= 40 ? 'Needs Attention' : 'Critical'}`;
+      if (descEl) {
+        if (score >= 70) descEl.textContent = 'Your crops are showing good health. Keep up the regular monitoring and preventive measures.';
+        else if (score >= 40) descEl.textContent = 'Some of your crops need attention. Review the scans with detected diseases and follow the treatment plans.';
+        else descEl.textContent = 'Multiple disease detections found. Prioritize treatment for severe cases and consult an agronomist if needed.';
+      }
+    }
 
-    // Replace existing hardcoded rows
-    const headerRow = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Confidence</th><th>Severity</th><th>Treatment</th><th>Status</th></tr>';
-    tbody.innerHTML = headerRow + rows;
+    // Render the main history table
+    if (!scans.length) {
+      const container = document.getElementById('history-table-container');
+      if (container) {
+        container.innerHTML = `
+          <div class="history-empty fade-in">
+            <div class="history-empty-icon">🌾</div>
+            <div class="history-empty-title">No scans yet</div>
+            <div class="history-empty-desc">Start your first disease detection to see your history here.</div>
+            <button class="history-empty-btn" onclick="dashTab('detect'); resetDetectView()">🔬 Start First Scan</button>
+          </div>`;
+      }
+    } else {
+      renderHistoryRows(scans);
+    }
 
     // Also update the overview recent scans
     const overviewTable = document.querySelector('#dtab-overview .history-table');
     if (overviewTable) {
-      const recentRows = scans.slice(0,3).map(s => {
-        const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric' });
-        const sevClass = { Early:'badge-green', Moderate:'badge-amber', Severe:'badge-danger', None:'badge-green' }[s.severityLevel] || 'badge-amber';
-        return `<tr><td>${date}</td><td>${s.cropType}</td><td>${s.diseaseDetected}</td><td><span class="badge ${sevClass}">${s.severityLevel}</span></td><td><span class="status-pill status-recovering">Logged</span></td></tr>`;
-      }).join('');
-      overviewTable.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>Status</th></tr>' + recentRows;
+      if (!scans.length) {
+        overviewTable.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>Actions</th></tr><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No scans yet. Start your first scan!</td></tr>';
+      } else {
+        const recentRows = scans.slice(0,3).map(s => {
+          const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric' });
+          const sevClass = { Early:'badge-green', Moderate:'badge-amber', Severe:'badge-danger', None:'badge-green' }[s.severityLevel] || 'badge-amber';
+          return `<tr>
+            <td>${date}</td><td>${s.cropType}</td><td>${s.diseaseDetected}</td>
+            <td><span class="badge ${sevClass}">${s.severityLevel}</span></td>
+            <td><button class="history-btn history-btn-view" onclick="viewScanDetail(${s.id})">👁️ View</button></td>
+          </tr>`;
+        }).join('');
+        overviewTable.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>Actions</th></tr>' + recentRows;
+      }
     }
-  } catch { /* silently fail */ }
+  } catch(err) { console.error('Failed to load scan history:', err); }
 }

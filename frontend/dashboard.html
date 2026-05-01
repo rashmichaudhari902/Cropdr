@@ -119,9 +119,10 @@
 
     <!-- ── DETECT TAB ── -->
     <div id="dtab-detect" style="display:none;">
+      <div id="scan-detail-nav-area" style="display:none;"></div>
       <div class="dash-header"><div><div class="dash-greeting" data-i18n="dash_greeting_ai">AI Analysis</div><div class="dash-title" data-i18n="dash_title_detect">Detect Crop Disease</div></div></div>
       <div class="dash-grid-2">
-        <div class="dash-card">
+        <div class="dash-card" id="detect-upload-card">
           <div class="dash-card-title" data-i18n="upload_images_5">📸 Upload Images (up to 5)</div>
           <div class="upload-zone" onclick="document.getElementById('det-file').click()">
             <div class="upload-zone-icon">🌿</div>
@@ -187,21 +188,33 @@
 
     <!-- ── HISTORY TAB ── -->
     <div id="dtab-history" style="display:none;">
-      <div class="dash-header"><div><div class="dash-greeting">Track Progress</div><div class="dash-title">Scan History</div></div></div>
+      <div class="dash-header">
+        <div>
+          <div class="dash-greeting">Track Progress</div>
+          <div class="dash-title">Scan History</div>
+        </div>
+        <button class="btn-analyze" style="width:auto;padding:12px 22px;" onclick="dashTab('detect'); resetDetectView()">+ New Scan</button>
+      </div>
       <div class="dash-card">
         <div class="dash-card-title">📜 All Disease Detections</div>
-        <table class="history-table" style="width:100%;">
-          <tr><th>Date</th><th>Crop</th><th>Disease</th><th>Confidence</th><th>Severity</th><th>Treatment</th><th>Status</th></tr>
-          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">Loading scans...</td></tr>
-        </table>
+        <div class="history-filter-bar">
+          <input type="text" class="history-search" id="history-search-input" placeholder="Search by crop or disease name..." oninput="filterHistoryTable()" />
+          <div class="history-stat-pills" id="history-stat-pills"></div>
+        </div>
+        <div id="history-table-container">
+          <table class="history-table" id="history-main-table" style="width:100%;">
+            <tr><th>Date</th><th>Crop</th><th>Disease</th><th>Confidence</th><th>Severity</th><th>Treatment</th><th>Actions</th></tr>
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">Loading scans...</td></tr>
+          </table>
+        </div>
       </div>
       <div class="dash-grid-2" style="margin-top:20px;">
         <div class="dash-card">
           <div class="dash-card-title">🏆 Crop Health Score</div>
           <div style="text-align:center;padding:16px 0;">
-            <div style="font-family:var(--ff-head);font-size:4rem;color:var(--green-base);font-weight:900;line-height:1;">78</div>
-            <div style="font-size:.85rem;color:var(--muted);margin:6px 0 16px;">out of 100 · Good Health</div>
-            <div style="background:var(--green-pale);border-radius:var(--radius);padding:12px;font-size:.85rem;line-height:1.6;color:var(--green-dark);">Your crops are showing good recovery. Continue monitoring the field and maintain scheduled applications.</div>
+            <div style="font-family:var(--ff-head);font-size:4rem;color:var(--green-base);font-weight:900;line-height:1;" id="health-score-val">—</div>
+            <div style="font-size:.85rem;color:var(--muted);margin:6px 0 16px;" id="health-score-label">Analyzing your crop health...</div>
+            <div style="background:var(--green-pale);border-radius:var(--radius);padding:12px;font-size:.85rem;line-height:1.6;color:var(--green-dark);" id="health-score-desc">Complete some scans to see your crop health score.</div>
           </div>
         </div>
       </div>
@@ -285,6 +298,23 @@
     </div>
 
   </main>
+</div>
+
+<!-- DIAGNOSIS MODAL POPUP -->
+<div id="diagnosis-modal" class="diagnosis-modal" onclick="closeDiagnosisModal(event)">
+  <div class="diagnosis-modal-content" onclick="event.stopPropagation()">
+    <div class="diagnosis-modal-header">
+      <div class="diagnosis-modal-title">📋 Diagnosis Summary</div>
+      <button class="diagnosis-modal-close" onclick="closeDiagnosisModal()">✕</button>
+    </div>
+    <div id="diagnosis-modal-body" class="diagnosis-modal-body">
+      <!-- Content will be populated dynamically -->
+    </div>
+    <div class="diagnosis-modal-footer">
+      <button class="diagnosis-modal-btn cancel" onclick="closeDiagnosisModal()">Close</button>
+      <button class="diagnosis-modal-btn download" onclick="downloadDiagnosisPDF()">📄 Download PDF Report</button>
+    </div>
+  </div>
 </div>
 
 <script src="js/main.js"></script>
