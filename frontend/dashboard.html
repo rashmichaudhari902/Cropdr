@@ -142,7 +142,15 @@
           <div class="image-preview-row" id="det-previews"></div>
           <div style="margin-bottom:14px;">
             <label class="form-label" data-i18n="problem_desc">Problem Description (Optional)</label>
-            <textarea class="form-input" id="det-desc" rows="3" data-i18n-placeholder="desc_placeholder" placeholder="Describe the symptoms, e.g., 'Yellow spots on leaves for 3 days...'" oninput="checkDetectEnable()" style="resize:vertical;"></textarea>
+            <div class="voice-input-wrap">
+              <textarea class="form-input" id="det-desc" rows="3" data-i18n-placeholder="desc_placeholder" placeholder="Describe the symptoms, e.g., 'Yellow spots on leaves for 3 days...'" oninput="checkDetectEnable()" style="resize:vertical;padding-right:48px;"></textarea>
+              <button class="mic-btn" id="det-mic-btn" type="button" onclick="toggleVoice('det-desc','det-mic-btn')" title="Speak your description">
+                <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10a7 7 0 0 1-14 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
+            </div>
+            <div class="voice-status" id="det-voice-status">
+              <span class="voice-dot"></span> Listening… speak now
+            </div>
           </div>
           <div style="margin-bottom:14px;">
             <label class="form-label" data-i18n="response_language">Response Language</label>
@@ -243,6 +251,9 @@
             <div id="chat-end"></div>
             <div class="chat-input-row" style="margin-top:10px;">
               <input class="chat-input" id="chat-input-field" type="text" placeholder="Ask about your crops... (English or Hindi)" onkeydown="if(event.key==='Enter')sendChatMsg()" />
+              <button class="mic-btn mic-btn-inline" id="chat-mic-btn" type="button" onclick="toggleVoice('chat-input-field','chat-mic-btn')" title="Speak your question">
+                <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10a7 7 0 0 1-14 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              </button>
               <button class="chat-send" onclick="sendChatMsg()" style="border:none;">Send</button>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
