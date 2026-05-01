@@ -770,24 +770,7 @@ async function loadScansHistory() {
       renderHistoryRows(scans);
     }
 
-    // Also update the overview recent scans
-    const overviewTable = document.querySelector('#dtab-overview .history-table');
-    if (overviewTable) {
-      if (!scans.length) {
-        overviewTable.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>Actions</th></tr><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No scans yet. Start your first scan!</td></tr>';
-      } else {
-        const recentRows = scans.slice(0,3).map(s => {
-          const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric' });
-          const sevClass = { Early:'badge-green', Moderate:'badge-amber', Severe:'badge-danger', None:'badge-green' }[s.severityLevel] || 'badge-amber';
-          return `<tr>
-            <td>${date}</td><td>${s.cropType}</td><td>${s.diseaseDetected}</td>
-            <td><span class="badge ${sevClass}">${s.severityLevel}</span></td>
-            <td><button class="history-btn history-btn-view" onclick="viewScanDetail(${s.id})">👁️ View</button></td>
-          </tr>`;
-        }).join('');
-        overviewTable.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>Actions</th></tr>' + recentRows;
-      }
-    }
+
   } catch(err) { console.error('Failed to load scan history:', err); }
 }
 
@@ -968,3 +951,145 @@ async function handleEditProfileSubmit(event) {
   }
 }
 
+
+/* ─── Voice-to-Text (Web Speech API) ─── */
+(function initVoiceEngine() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    window.addEventListener('load', () => {
+      document.querySelectorAll('.mic-btn').forEach(btn => btn.style.display = 'none');
+    });
+    window.toggleVoice = () => showToast('⚠️ Voice input is not supported in this browser. Try Chrome or Edge.');
+    return;
+  }
+
+  let activeRecognition = null;
+  let activeTargetId    = null;
+  let activeBtnId       = null;
+  let userStopped       = false;   // true only when the user clicked Stop
+
+  function getLangCode() {
+    const lang = localStorage.getItem('cropdr_lang') || 'en';
+    return { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' }[lang] || 'en-IN';
+  }
+
+  function resetUI() {
+    if (activeBtnId) {
+      const btn = document.getElementById(activeBtnId);
+      if (btn) btn.classList.remove('recording');
+    }
+    const detStatus = document.getElementById('det-voice-status');
+    if (detStatus) detStatus.classList.remove('show');
+    activeTargetId    = null;
+    activeBtnId       = null;
+    activeRecognition = null;
+    userStopped       = false;
+  }
+
+  function stopCurrentRecognition() {
+    userStopped = true;
+    if (activeRecognition) {
+      try { activeRecognition.stop(); } catch (_) {}
+    } else {
+      resetUI();
+    }
+  }
+
+  window.toggleVoice = function(targetId, btnId) {
+    // Already recording this target → user wants to stop
+    if (activeTargetId === targetId) {
+      stopCurrentRecognition();
+      return;
+    }
+
+    // Recording a different target → stop it first, then start new
+    if (activeRecognition) {
+      stopCurrentRecognition();
+    }
+
+    const btn    = document.getElementById(btnId);
+    const target = document.getElementById(targetId);
+    if (!btn || !target) return;
+
+    // Snapshot of whatever was already typed before voice started
+    const baseText = target.value.trim();
+
+    // confirmed holds all final segments accumulated so far
+    let confirmed = '';
+
+    function buildRecognition() {
+      const r = new SpeechRecognition();
+      r.lang            = getLangCode();
+      r.interimResults  = true;   // live-stream partial words
+      r.maxAlternatives = 1;
+      r.continuous      = true;   // keep listening until user stops
+
+      r.onresult = (event) => {
+        let interim = '';
+        // Walk only new results from this event
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const chunk = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            confirmed += chunk + ' ';
+          } else {
+            interim = chunk;
+          }
+        }
+        // Update field: base + all confirmed words + current partial word
+        const prefix = baseText ? baseText + ' ' : '';
+        target.value = prefix + confirmed + interim;
+        if (typeof checkDetectEnable === 'function') checkDetectEnable();
+      };
+
+      r.onerror = (event) => {
+        // 'no-speech' is normal during continuous use — just ignore it silently
+        // 'aborted' fires when we call .stop() ourselves — also ignore
+        const fatal = { 'not-allowed': '🎤 Microphone permission denied. Please allow mic access.',
+                        'network':     '🌐 Network error during voice recognition.' };
+        if (fatal[event.error]) {
+          showToast(fatal[event.error]);
+          userStopped = true;   // treat as user stop so onend doesn't restart
+        }
+      };
+
+      r.onend = () => {
+        if (userStopped) {
+          // User clicked Stop — clean up for real
+          if (target.value) target.value = target.value.trim();
+          if (typeof checkDetectEnable === 'function') checkDetectEnable();
+          resetUI();
+        } else {
+          // Natural end of an utterance (browser paused) — restart immediately
+          // to keep the mic open continuously
+          try {
+            activeRecognition = buildRecognition();
+            activeRecognition.start();
+          } catch (_) {
+            // If restart fails just reset gracefully
+            resetUI();
+          }
+        }
+      };
+
+      return r;
+    }
+
+    activeRecognition = buildRecognition();
+    activeTargetId    = targetId;
+    activeBtnId       = btnId;
+    userStopped       = false;
+
+    // Show recording state in UI
+    btn.classList.add('recording');
+    const detStatus = document.getElementById('det-voice-status');
+    if (detStatus && targetId === 'det-desc') detStatus.classList.add('show');
+
+    try {
+      activeRecognition.start();
+    } catch (err) {
+      showToast('⚠️ Could not start voice input: ' + err.message);
+      resetUI();
+    }
+  };
+})();
