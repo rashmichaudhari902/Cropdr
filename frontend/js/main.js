@@ -195,6 +195,11 @@ window.addEventListener('load', async () => {
         if (window.location.pathname.includes('auth.html')) {
           goDashboard();
         }
+        
+        // Initialize dashboard safely now that user data is loaded
+        if (typeof window.initDashboard === 'function') {
+          window.initDashboard();
+        }
       } else { clearToken(); }
     } catch { clearToken(); }
   } else {

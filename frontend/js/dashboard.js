@@ -5,18 +5,15 @@ let chatHistory = [];
 let currentChatSessionId = null;
 
 /* ─── Dashboard Init ─── */
-window.addEventListener('load', () => {
-  // Since main.js runs first and sets currentUser if logged in, we wait briefly
-  setTimeout(() => {
-    if (currentUser) {
-      updateDashUser();
-      setDashDate();
-      loadWeatherWidget();
-      loadScansHistory();
-      loadChatSessions();
-    }
-  }, 100);
-});
+window.initDashboard = function() {
+  if (currentUser) {
+    updateDashUser();
+    setDashDate();
+    loadWeatherWidget();
+    loadScansHistory();
+    loadChatSessions();
+  }
+};
 
 function updateDashUser() {
   if (!currentUser) return;
