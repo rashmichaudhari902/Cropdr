@@ -50,6 +50,7 @@ function initDB() {
         location           TEXT    DEFAULT 'India',
         primary_crops      TEXT    DEFAULT '',
         preferred_language TEXT    DEFAULT 'English',
+        crop_status        TEXT    DEFAULT '',
         created_at         DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
 
@@ -83,7 +84,10 @@ function initDB() {
         
         // Safely migrate existing databases
         db.run(`ALTER TABLE chat_messages ADD COLUMN session_id TEXT`, () => {
-          resolve();
+          // Add crop_status column if it doesn't exist
+          db.run(`ALTER TABLE users ADD COLUMN crop_status TEXT DEFAULT ''`, () => {
+            resolve();
+          });
         });
       });
     });
@@ -99,11 +103,15 @@ const stmts = {
   ),
   getUserByEmail: (email) => get(`SELECT * FROM users WHERE email = ?`, [email]),
   getUserById: (id) => get(
-    `SELECT id, name, email, location, primary_crops, preferred_language, created_at FROM users WHERE id = ?`, [id]
+    `SELECT id, name, email, location, primary_crops, preferred_language, crop_status, created_at FROM users WHERE id = ?`, [id]
   ),
   updateUser: (p) => run(
     `UPDATE users SET name=?, location=?, primary_crops=?, preferred_language=? WHERE id=?`,
     [p.name, p.location, p.primaryCrops, p.preferredLanguage, p.id]
+  ),
+  updateCropStatus: (userId, cropStatus) => run(
+    `UPDATE users SET crop_status=? WHERE id=?`,
+    [cropStatus, userId]
   ),
 
   createScan: (p) => run(
@@ -114,6 +122,14 @@ const stmts = {
   ),
   getScansByUser: (userId) => all(
     `SELECT * FROM scans WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`, [userId]
+  ),
+  getAllScans: () => all(
+    `SELECT s.id, s.crop_type, s.disease_detected, s.confidence_score, 
+            s.severity_level, s.spread_risk, s.created_at, u.name as userName
+     FROM scans s
+     JOIN users u ON s.user_id = u.id
+     ORDER BY s.created_at DESC
+     LIMIT 50`
   ),
   getScanById: (id, userId) => get(`SELECT * FROM scans WHERE id = ? AND user_id = ?`, [id, userId]),
   deleteScan: (id, userId) => run(`DELETE FROM scans WHERE id = ? AND user_id = ?`, [id, userId]),

@@ -35,4 +35,30 @@ router.put('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/user/crop-status
+router.get('/crop-status', authMiddleware, async (req, res) => {
+  try {
+    const user = await stmts.getUserById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ cropStatus: user.crop_status || '' });
+  } catch (err) {
+    console.error('Crop status error:', err);
+    res.status(500).json({ error: 'Failed to load crop status.' });
+  }
+});
+
+// POST /api/user/crop-status
+router.post('/crop-status', authMiddleware, async (req, res) => {
+  try {
+    const { cropStatus } = req.body;
+    if (typeof cropStatus !== 'string') return res.status(400).json({ error: 'Invalid crop status.' });
+    
+    await stmts.updateCropStatus(req.user.userId, cropStatus);
+    res.json({ success: true, cropStatus });
+  } catch (err) {
+    console.error('Crop status update error:', err);
+    res.status(500).json({ error: 'Failed to save crop status.' });
+  }
+});
+
 module.exports = router;

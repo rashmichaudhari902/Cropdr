@@ -4,6 +4,17 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
+// GET /api/scans/all (All scans from all users)
+router.get('/all', authMiddleware, async (req, res) => {
+  try {
+    const scans = await stmts.getAllScans();
+    res.json({ scans });
+  } catch (err) {
+    console.error('All scans error:', err);
+    res.status(500).json({ error: 'Failed to load scans.' });
+  }
+});
+
 // GET /api/scans
 router.get('/', authMiddleware, async (req, res) => {
   try {

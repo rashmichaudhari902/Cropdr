@@ -111,6 +111,8 @@ window.initDashboard = function() {
     setDashDate();
     loadWeatherWidget();
     loadScansHistory();
+    loadUserScans();
+    loadAllScansOverview();
     loadChatSessions();
   }
 };
@@ -139,6 +141,15 @@ function updateDashUser() {
   
   const pfEmail = document.getElementById('pf-email');
   if (pfEmail) pfEmail.textContent = currentUser.email;
+
+  const pfLocation = document.getElementById('pf-location');
+  if (pfLocation) pfLocation.textContent = currentUser.location || 'Maharashtra, India';
+
+  const pfCrops = document.getElementById('pf-crops');
+  if (pfCrops) pfCrops.textContent = currentUser.primaryCrops || 'Wheat, Cotton, Soybeans';
+
+  const pfLang = document.getElementById('pf-lang');
+  if (pfLang) pfLang.textContent = currentUser.preferredLanguage || 'English / हिंदी';
 }
 
 function setDashDate() {
@@ -155,6 +166,11 @@ function dashTab(tab) {
     const sb = document.getElementById('sb-' + t);
     if (sb) sb.classList.toggle('active', t === tab);
   });
+  
+  // Load profile-specific data when profile tab is opened
+  if (tab === 'profile') {
+    loadUserScans();
+  }
 }
 
 /* ─── Quick Upload (Overview) ─── */
@@ -774,3 +790,181 @@ async function loadScansHistory() {
     }
   } catch(err) { console.error('Failed to load scan history:', err); }
 }
+
+/* ─── Load All Scans (for Overview Recent Scans table) ─── */
+async function loadAllScansOverview() {
+  try {
+    const res = await fetch(`${API}/scans/all`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const rawScans = data.scans || [];
+    
+    // Map snake_case to camelCase
+    const scans = rawScans.map(s => ({
+      id: s.id,
+      cropType: s.crop_type,
+      diseaseDetected: s.disease_detected,
+      confidenceScore: s.confidence_score,
+      severityLevel: s.severity_level,
+      spreadRisk: s.spread_risk,
+      createdAt: s.created_at,
+      userName: s.userName
+    }));
+
+    const tableEl = document.getElementById('overview-all-scans-table');
+    if (!tableEl) return;
+
+    if (!scans.length) {
+      tableEl.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>User</th></tr><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No scans available yet.</td></tr>';
+    } else {
+      const headerRow = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>User</th></tr>';
+      const rows = scans.slice(0, 5).map(s => {
+        const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric' });
+        const sevClass = { Early:'badge-green', Moderate:'badge-amber', Severe:'badge-danger', None:'badge-green' }[s.severityLevel] || 'badge-amber';
+        const userName = s.userName || 'Unknown';
+        return `<tr>
+          <td>${date}</td>
+          <td>${s.cropType}</td>
+          <td>${s.diseaseDetected}</td>
+          <td><span class="badge ${sevClass}">${s.severityLevel}</span></td>
+          <td>${userName}</td>
+        </tr>`;
+      }).join('');
+      tableEl.innerHTML = headerRow + rows;
+    }
+  } catch(err) { console.error('Failed to load all scans overview:', err); }
+}
+
+/* ─── Load User's Scans (Current User Only) ─── */
+async function loadUserScans() {
+  try {
+    const res = await fetch(`${API}/scans`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const scans = data.scans || [];
+
+    // Update Overview My Scans Table
+    const overviewTable = document.getElementById('overview-my-scans-table');
+    if (overviewTable) {
+      if (!scans.length) {
+        overviewTable.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Result</th><th>Action</th></tr><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No scans yet. Start your first scan!</td></tr>';
+      } else {
+        const headerRow = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Result</th><th>Action</th></tr>';
+        const rows = scans.slice(0, 5).map(s => {
+          const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric' });
+          const isHealthy = s.diseaseDetected === 'Healthy';
+          const resultClass = isHealthy ? 'badge-green' : 'badge-danger';
+          const resultText = isHealthy ? '✅ Healthy' : '⚠️ Disease';
+          return `<tr>
+            <td>${date}</td>
+            <td>${s.cropType}</td>
+            <td>${s.diseaseDetected}</td>
+            <td><span class="badge ${resultClass}">${resultText}</span></td>
+            <td><button class="history-btn history-btn-view" onclick="viewScanDetail(${s.id})">👁️ View</button></td>
+          </tr>`;
+        }).join('');
+        overviewTable.innerHTML = headerRow + rows;
+      }
+    }
+
+    // Update Profile Scans Section
+    const profileContainer = document.getElementById('profile-scans-container');
+    if (profileContainer) {
+      if (!scans.length) {
+        profileContainer.innerHTML = `
+          <div style="text-align:center;padding:30px;color:var(--muted);">
+            <div style="font-size:2rem;margin-bottom:12px;">📭</div>
+            <div style="font-size:.95rem;">No scans yet. Start your first disease detection!</div>
+            <button class="history-empty-btn" style="margin-top:16px;" onclick="dashTab('detect'); resetDetectView()">🔬 Start First Scan</button>
+          </div>`;
+      } else {
+        const scansHTML = scans.map(s => {
+          const date = new Date(s.createdAt).toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+          const isHealthy = s.diseaseDetected === 'Healthy';
+          const resultBg = isHealthy ? 'var(--green-pale)' : 'var(--danger-light)';
+          const resultColor = isHealthy ? 'var(--green-dark)' : 'var(--danger)';
+          return `
+            <div style="padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;background:#fff;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+                <div>
+                  <div style="font-size:.8rem;color:var(--muted);margin-bottom:4px;">📅 ${date}</div>
+                  <div style="font-weight:700;font-size:1rem;color:var(--text);">${s.cropType}</div>
+                </div>
+                <button class="history-btn history-btn-view" onclick="viewScanDetail(${s.id})">👁️ View</button>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <div style="padding:4px 12px;border-radius:20px;background:${resultBg};color:${resultColor};font-weight:600;font-size:.8rem;">
+                  ${isHealthy ? '✅ Healthy' : '⚠️ ' + s.diseaseDetected}
+                </div>
+                <div style="padding:4px 12px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:600;font-size:.8rem;">
+                  🎯 ${s.severityLevel || 'N/A'}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        profileContainer.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;">${scansHTML}</div>`;
+      }
+    }
+  } catch(err) { console.error('Failed to load user scans:', err); }
+}
+
+/* ─── Profile Edit Functions ─── */
+function openEditProfileModal() {
+  if (!currentUser) return;
+  const modal = document.getElementById('edit-profile-modal');
+  if (!modal) return;
+
+  document.getElementById('edit-pf-name').value = currentUser.name || '';
+  document.getElementById('edit-pf-location').value = currentUser.location || '';
+  document.getElementById('edit-pf-crops').value = currentUser.primaryCrops || '';
+  document.getElementById('edit-pf-lang').value = currentUser.preferredLanguage || 'English';
+
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditProfileModal(event) {
+  if (event && event.target.id !== 'edit-profile-modal') return;
+  const modal = document.getElementById('edit-profile-modal');
+  if (modal) {
+    modal.classList.remove('show');
+    document.body.style.overflow = 'auto';
+  }
+}
+
+async function handleEditProfileSubmit(event) {
+  event.preventDefault();
+  const name = document.getElementById('edit-pf-name').value.trim();
+  const location = document.getElementById('edit-pf-location').value.trim();
+  const primaryCrops = document.getElementById('edit-pf-crops').value.trim();
+  const preferredLanguage = document.getElementById('edit-pf-lang').value;
+
+  if (!name) {
+    showToast('⚠️ Name is required.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/user/profile`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ name, location, primaryCrops, preferredLanguage })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      showToast('✅ Profile updated successfully!');
+      currentUser = { ...currentUser, ...data };
+      localStorage.setItem('cropdr_user', JSON.stringify(currentUser));
+      updateDashUser();
+      closeEditProfileModal();
+    } else {
+      showToast('❌ Update failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    console.error('Profile update error:', err);
+    showToast('❌ Network error while updating profile.');
+  }
+}
+
