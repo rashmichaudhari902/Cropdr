@@ -131,7 +131,7 @@ const stmts = {
      ORDER BY s.created_at DESC
      LIMIT 50`
   ),
-  getScanById: (id, userId) => get(`SELECT * FROM scans WHERE id = ? AND user_id = ?`, [id, userId]),
+  getScanById: (id) => get(`SELECT * FROM scans WHERE id = ?`, [id]),
   deleteScan: (id, userId) => run(`DELETE FROM scans WHERE id = ? AND user_id = ?`, [id, userId]),
   getUserScanStats: (userId) => get(
     `SELECT COUNT(*) as total_scans,

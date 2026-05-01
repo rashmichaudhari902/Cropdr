@@ -798,9 +798,9 @@ async function loadAllScansOverview() {
     if (!tableEl) return;
 
     if (!scans.length) {
-      tableEl.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>User</th></tr><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No scans available yet.</td></tr>';
+      tableEl.innerHTML = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>User</th><th>Action</th></tr><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No scans available yet.</td></tr>';
     } else {
-      const headerRow = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>User</th></tr>';
+      const headerRow = '<tr><th>Date</th><th>Crop</th><th>Disease</th><th>Severity</th><th>User</th><th>Action</th></tr>';
       const rows = scans.slice(0, 5).map(s => {
         const date = new Date(s.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric' });
         const sevClass = { Early:'badge-green', Moderate:'badge-amber', Severe:'badge-danger', None:'badge-green' }[s.severityLevel] || 'badge-amber';
@@ -811,6 +811,7 @@ async function loadAllScansOverview() {
           <td>${s.diseaseDetected}</td>
           <td><span class="badge ${sevClass}">${s.severityLevel}</span></td>
           <td>${userName}</td>
+          <td><button class="history-btn history-btn-view" onclick="viewScanDetail(${s.id})">👁️ View</button></td>
         </tr>`;
       }).join('');
       tableEl.innerHTML = headerRow + rows;
